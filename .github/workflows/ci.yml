@@ -24,7 +24,6 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          # Chuyển tên repo về chữ thường (lowercase)
           RAW_IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/miniinsurance"
           LOWER_IMAGE_NAME=$(echo $RAW_IMAGE_NAME | tr '[A-Z]' '[a-z]')
           
