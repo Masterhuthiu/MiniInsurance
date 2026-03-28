@@ -1,30 +1,39 @@
-# Sử dụng Debian slim để dung lượng nhẹ nhưng vẫn đủ thư viện
 FROM debian:bookworm-slim
 
-# 1. Cài đặt các runtime cần thiết (GnuCOBOL và thư viện PostgreSQL)
+# 1. Cài đặt các phụ thuộc hệ thống
 RUN apt-get update && apt-get install -y \
     gnucobol \
-    libpq5 \
+    libpq-dev \
+    postgresql-client \
+    git \
+    make \
+    gcc \
+    autoconf \
+    libtool \
+    bison \
+    flex \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
+# 2. Build và Install Open-COBOL-ESQL (ocesql)
+RUN git clone --depth 1 https://github.com/opensourcecobol/Open-COBOL-ESQL.git /tmp/ocesql \
+    && cd /tmp/ocesql \
+    && ./autogen.sh \
+    && ./configure CPPFLAGS="-I/usr/include/postgresql" \
+    && make \
+    && make install \
+    && ldconfig
+
+# 3. Tạo Symbolic Links để GnuCOBOL tìm thấy module lúc Runtime
+RUN ln -s /usr/local/lib/libocesql.so /usr/local/lib/OCESQLConnect.so \
+    && ln -s /usr/local/lib/libocesql.so /usr/local/lib/OCESQL.so
+
+# 4. Thiết lập thư mục làm việc và biến môi trường mặc định
 WORKDIR /app
+ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+ENV COB_LIBRARY_PATH=/usr/local/lib
 
-# 2. Copy các file thực thi đã được build từ bước CI vào image
-# (GitHub Actions đã build xong FETCHTBL và FETCH-POLICY ở các step trước)
-COPY FETCHTBL FETCH-POLICY ./
+# Copy toàn bộ code vào image (để CI có cái mà chạy)
+COPY . .
 
-# 3. Cấu hình thư viện ocesql
-# Bạn cần copy các file .so mà bạn đã tạo/copy ở bước CI vào đây
-COPY OCESQLConnect.so /usr/local/lib/libocesql.so.0
-COPY OCESQL.so /usr/local/lib/libocesql.so
-
-# Cập nhật cache thư viện hệ thống
-RUN ldconfig
-
-# 4. Thiết lập biến môi trường để COBOL tìm thấy module
-ENV LD_LIBRARY_PATH=/usr/local/lib
-ENV PGHOST=localhost
-ENV PGPORT=5432
-
-# Chạy ứng dụng mặc định
-CMD ["./FETCHTBL"]
+CMD ["bash"]

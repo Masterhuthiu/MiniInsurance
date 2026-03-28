@@ -2,13 +2,12 @@ name: Build, Test and Push Image
 
 on: [push, pull_request]
 
-# Cần quyền này để ghi package vào GitHub Container Registry (GHCR)
 permissions:
   contents: read
   packages: write
 
 jobs:
-  build-and-run:
+  build-and-push:
     runs-on: ubuntu-latest
 
     services:
@@ -30,54 +29,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gnucobol libpq-dev git make gcc autoconf libtool
-
-      - name: Build and Install Open-COBOL-ESQL
-        run: |
-          git clone https://github.com/opensourcecobol/Open-COBOL-ESQL.git
-          cd Open-COBOL-ESQL
-          ./autogen.sh
-          ./configure
-          make
-          sudo make install
-          sudo ldconfig
-
-      - name: Initialize Database
-        run: |
-          psql -h localhost -U postgres -d insurandb -f db/init.sql
-
-      - name: Build Apps (FETCHTBL & FETCH-POLICY)
-        run: |
-          # Build FETCHTBL
-          ocesql FETCHTBL.cbl FETCHTBL.cob
-          cp /usr/local/lib/libocesql.so ./OCESQLConnect.so
-          cp /usr/local/lib/libocesql.so ./OCESQL.so
-          cobc -x -fixed -I. FETCHTBL.cob /usr/local/lib/libocesql.so -lpq -o FETCHTBL
-          
-          # Build FETCH-POLICY
-          ocesql src/FETCH-POLICY.cbl src/FETCH-POLICY.cob
-          # (Các file .so đã copy ở trên dùng chung được)
-          cobc -x -fixed -I. src/FETCH-POLICY.cob /usr/local/lib/libocesql.so -lpq -o FETCH-POLICY
-
-      - name: Run and Verify
-        env:
-          LD_LIBRARY_PATH: .:/usr/local/lib:$LD_LIBRARY_PATH
-          PGHOST: localhost
-          PGPORT: 5432
-          PGUSER: postgres
-          PGDATABASE: insurandb
-        run: |
-          echo "--- KET QUA BANG EMP (FETCHTBL) ---"
-          ./FETCHTBL
-          echo ""
-          echo "--- KET QUA BANG POLICIES (FETCH-POLICY) ---"
-          ./FETCH-POLICY
-
-      # --- BƯỚC MỚI: PUSH DOCKER IMAGE ---
-
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v2
         with:
@@ -85,12 +36,32 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push Docker Image
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          push: true
-          # Tên image sẽ là: ghcr.io/tên-user/tên-repo:latest
-          tags: |
-            ghcr.io/masterhuthiu/miniinsurance:latest
-            ghcr.io/masterhuthiu/miniinsurance:${{ github.sha }}
+      # Bước 1: Build Image (Lúc này ocesql đã được cài vào bên trong image nhờ Dockerfile)
+      - name: Build Docker Image
+        run: |
+          docker build -t ghcr.io/${{ github.repository }}:latest .
+
+      # Bước 2: Chạy Test ngay trên Image vừa build
+      - name: Run and Verify
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: postgres
+          PGDATABASE: insurandb
+        run: |
+          docker run --network host \
+            -e PGHOST=$PGHOST -e PGUSER=$PGUSER -e PGDATABASE=$PGDATABASE \
+            ghcr.io/${{ github.repository }}:latest bash -c "
+              echo '--- Initializing DB ---' &&
+              psql -h localhost -U postgres -d insurandb -f db/init.sql &&
+              echo '--- Compiling COBOL ---' &&
+              ocesql FETCHTBL.cbl FETCHTBL.cob &&
+              cobc -x -fixed FETCHTBL.cob /usr/local/lib/libocesql.so -lpq -o FETCHTBL &&
+              echo '--- Running Test ---' &&
+              ./FETCHTBL
+            "
+
+      # Bước 3: Nếu test pass thì mới Push lên Registry
+      - name: Push Docker Image
+        run: |
+          docker push ghcr.io/${{ github.repository }}:latest
