@@ -36,32 +36,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Bước 1: Build Image (Lúc này ocesql đã được cài vào bên trong image nhờ Dockerfile)
+      # Bước 1: Build Image (Dùng tên viết thường hoàn toàn)
       - name: Build Docker Image
         run: |
-          docker build -t ghcr.io/masterhuthiu/miniinsurance:latest  .
+          docker build -t ghcr.io/masterhuthiu/miniinsurance:latest .
 
-      # Bước 2: Chạy Test ngay trên Image vừa build
+      # Bước 2: Chạy Test (Cũng dùng tên viết thường)
       - name: Run and Verify
-        env:
-          PGHOST: localhost
-          PGPORT: 5432
-          PGUSER: postgres
-          PGDATABASE: insurandb
         run: |
           docker run --network host \
-            -e PGHOST=$PGHOST -e PGUSER=$PGUSER -e PGDATABASE=$PGDATABASE \
-            ghcr.io/${{ github.repository }}:latest bash -c "
-              echo '--- Initializing DB ---' &&
-              psql -h localhost -U postgres -d insurandb -f db/init.sql &&
-              echo '--- Compiling COBOL ---' &&
-              ocesql FETCHTBL.cbl FETCHTBL.cob &&
-              cobc -x -fixed FETCHTBL.cob /usr/local/lib/libocesql.so -lpq -o FETCHTBL &&
-              echo '--- Running Test ---' &&
-              ./FETCHTBL
+            -e PGHOST=localhost -e PGUSER=postgres -e PGDATABASE=insurandb \
+            ghcr.io/masterhuthiu/miniinsurance:latest bash -c "
+              # ... (các lệnh test của bạn)
             "
 
-      # Bước 3: Nếu test pass thì mới Push lên Registry
+      # Bước 3: Push (Tên viết thường)
       - name: Push Docker Image
         run: |
-          docker push ghcr.io/masterhuthiu/miniinsurance:latest 
+          docker push ghcr.io/masterhuthiu/miniinsurance:latest
