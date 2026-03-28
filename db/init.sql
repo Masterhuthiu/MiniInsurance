@@ -1,0 +1,30 @@
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    email VARCHAR(100)
+);
+
+INSERT INTO users (username, email) VALUES ('masterhuthiu', 'cosa199212@example.com');
+
+CREATE TABLE IF NOT EXISTS EMP (
+    EMP_NO SERIAL PRIMARY KEY,
+    EMP_NAME VARCHAR(20),
+    EMP_SALARY INT
+);
+
+CREATE TABLE EMP (EMP_NO INT, EMP_NAME VARCHAR(20), EMP_SALARY INT);
+INSERT INTO EMP VALUES (1001, 'Master Huthiu', 5000);
+INSERT INTO EMP VALUES (1002, 'Cosa 1992', 6000);
+INSERT INTO EMP (EMP_NO, EMP_NAME, EMP_SALARY) VALUES (1003, 'Master Huthiu1', 7000);
+INSERT INTO EMP (EMP_NO, EMP_NAME, EMP_SALARY) VALUES (1004, 'Cosa 19921', 8000);
+
+CREATE TABLE IF NOT EXISTS policies (
+    policy_id    VARCHAR(10) PRIMARY KEY,
+    holder_name  VARCHAR(50),
+    issue_date   DATE,
+    premium      NUMERIC(12, 2),
+    status       VARCHAR(10) -- 'ACTIVE', 'LAPSED', 'PENDING'
+);
+
+INSERT INTO policies VALUES ('P001', 'Nguyen Van A', '2026-01-01', 1500.00, 'ACTIVE');
+INSERT INTO policies VALUES ('P002', 'Tran Thi B', '2026-02-15', 2750.50, 'ACTIVE');
