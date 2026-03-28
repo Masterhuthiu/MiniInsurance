@@ -14,7 +14,7 @@
            05  D-POL-STATUS        PIC  X(10).
 
        EXEC SQL BEGIN DECLARE SECTION END-EXEC.
-       01  DBNAME                  PIC  X(30) VALUE "testdb".
+       01  DBNAME                  PIC  X(30) VALUE "insurandb".
        01  USERNAME                PIC  X(30) VALUE "postgres".
        01  PASSWD                  PIC  X(10) VALUE SPACE.
        01  POL-REC-VARS.
