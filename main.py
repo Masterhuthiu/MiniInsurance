@@ -1,9 +1,18 @@
-from fastapi import FastAPI  # 1. Import thư viện
+from fastapi import FastAPI
 import subprocess
 
-app = FastAPI()               # 2. Khởi tạo app (BẮT BUỘC DÒNG NÀY PHẢI CÓ TRƯỚC)
+# KHỞI TẠO APP TRƯỚC KHI DÙNG DECORATOR
+app = FastAPI()
 
-@app.get("/policies")         # 3. Sử dụng app để định nghĩa endpoint
+@app.get("/policies")
 def read_policies():
+    # Gọi file thực thi COBOL
     process = subprocess.run(['./FETCHTBL'], capture_output=True, text=True)
-    return {"status": "success", "output": process.stdout}
+    return {
+        "status": "success", 
+        "data": process.stdout
+    }
+
+@app.get("/")
+def root():
+    return {"message": "COBOL API is running on port 8000"}
