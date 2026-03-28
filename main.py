@@ -1,7 +1,9 @@
-@app.get("/policies")
+from fastapi import FastAPI  # 1. Import thư viện
+import subprocess
+
+app = FastAPI()               # 2. Khởi tạo app (BẮT BUỘC DÒNG NÀY PHẢI CÓ TRƯỚC)
+
+@app.get("/policies")         # 3. Sử dụng app để định nghĩa endpoint
 def read_policies():
     process = subprocess.run(['./FETCHTBL'], capture_output=True, text=True)
-    # Tách các dòng, lọc bỏ các dòng tiêu đề và dấu gạch ngang
-    lines = process.stdout.split('\n')
-    data_only = [line for line in lines if line.strip() and not line.startswith('*') and not line.startswith('-') and 'NAME' not in line]
-    return {"status": "success", "data": data_only}
+    return {"status": "success", "output": process.stdout}
