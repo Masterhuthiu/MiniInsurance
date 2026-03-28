@@ -92,5 +92,5 @@ jobs:
           push: true
           # Tên image sẽ là: ghcr.io/tên-user/tên-repo:latest
           tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ghcr.io/masterhuthiu/miniinsurance:latest
+            ghcr.io/masterhuthiu/miniinsurance:${{ github.sha }}
