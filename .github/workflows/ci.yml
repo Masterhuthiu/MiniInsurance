@@ -1,14 +1,9 @@
-name: Build, Test and Push Image
+name: Build and Test FETCHTBL
 
 on: [push, pull_request]
 
-# Cần quyền này để push lên GitHub Container Registry (GHCR)
-permissions:
-  contents: read
-  packages: write
-
 jobs:
-  build-and-test:
+  build-and-run:
     runs-on: ubuntu-latest
 
     services:
@@ -16,6 +11,7 @@ jobs:
         image: postgres:latest
         env:
           POSTGRES_USER: postgres
+          # Để PASSWD là SPACE như trong code, ta để trống password ở đây
           POSTGRES_HOST_AUTH_METHOD: trust 
           POSTGRES_DB: insurandb
         ports:
@@ -28,7 +24,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Install System Dependencies
         run: |
@@ -47,53 +43,44 @@ jobs:
 
       - name: Initialize Database
         run: |
-          # Giả sử file init.sql nằm trong thư mục db/
-          psql -h localhost -U postgres -d insurandb -f db/init.sql || echo "No init script found"
+        
+          psql -h localhost -U postgres -d insurandb -f db/init.sql
 
-      - name: Pre-compile and Build Apps
+
+      - name: Pre-compile with OCesql
+        run: ocesql FETCHTBL.cbl FETCHTBL.cob
+
+      - name: Prepare Libraries and Compile
         run: |
-          # Pre-compile
-          ocesql FETCHTBL.cbl FETCHTBL.cob
-          # Build binary (ép link trực tiếp file .so)
-          cobc -x -fixed -I. FETCHTBL.cob /usr/local/lib/libocesql.so -lpq -o FETCHTBL
+          # Copy thư viện để khớp với các Generate API của OCesql
+          cp /usr/local/lib/libocesql.so ./OCESQLConnect.so
+          cp /usr/local/lib/libocesql.so ./OCESQL.so
           
-          # Tương tự cho FETCH-POLICY
-          if [ -f src/FETCH-POLICY.cbl ]; then
-            ocesql src/FETCH-POLICY.cbl src/FETCH-POLICY.cob
-            cobc -x -fixed -I. src/FETCH-POLICY.cob /usr/local/lib/libocesql.so -lpq -o FETCH-POLICY
-          fi
+          # Biên dịch kèm theo đường dẫn include cho sqlca.cbl 
+          cobc -x -fixed -I. FETCHTBL.cob /usr/local/lib/libocesql.so -lpq -o FETCHTBL
+
+
+      - name: Pre-compile and Build FETCH-POLICY App
+        run: |
+          ocesql src/FETCH-POLICY.cbl src/FETCH-POLICY.cob
+          cp /usr/local/lib/libocesql.so ./OCESQLConnect.so
+          cp /usr/local/lib/libocesql.so ./OCESQL.so
+          cobc -x -fixed -I. src/FETCH-POLICY.cob /usr/local/lib/libocesql.so -lpq -o FETCH-POLICY
+
 
       - name: Run and Verify
         env:
-          LD_LIBRARY_PATH: .:/usr/local/lib
+          LD_LIBRARY_PATH: .:/usr/local/lib:$LD_LIBRARY_PATH
+          # Ép libpq kết nối tới localhost qua TCP thay vì Unix Socket
           PGHOST: localhost
           PGPORT: 5432
           PGUSER: postgres
           PGDATABASE: insurandb
         run: |
+          # Dùng dấu | để chạy từng dòng
           echo "--- KET QUA BANG EMP (FETCHTBL) ---"
           ./FETCHTBL
           
-          if [ -f ./FETCH-POLICY ]; then
-            echo "--- KET QUA BANG POLICIES (FETCH-POLICY) ---"
-            ./FETCH-POLICY
-          fi
-
-      # --- BƯỚC PUSH IMAGE ---
-      
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and Push Docker Image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          # Tên image sẽ là: ghcr.io/username/repository-name:latest
-          tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
+          echo ""
+          echo "--- KET QUA BANG POLICIES (FETCH-POLICY) ---"
+          ./FETCH-POLICY
