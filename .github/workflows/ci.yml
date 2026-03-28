@@ -1,6 +1,8 @@
-name: Build, Test and Push Image
+name: CI-CD Ready-To-Run
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ main, master ]
 
 permissions:
   contents: read
@@ -9,22 +11,6 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-
-    services:
-      postgres-db:
-        image: postgres:latest
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_HOST_AUTH_METHOD: trust 
-          POSTGRES_DB: insurandb
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -36,21 +22,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Bước 1: Build Image (Dùng tên viết thường hoàn toàn)
-      - name: Build Docker Image
+      - name: Build and Push Docker Image
         run: |
-          docker build -t ghcr.io/masterhuthiu/miniinsurance:latest .
-
-      # Bước 2: Chạy Test (Cũng dùng tên viết thường)
-      - name: Run and Verify
-        run: |
-          docker run --network host \
-            -e PGHOST=localhost -e PGUSER=postgres -e PGDATABASE=insurandb \
-            ghcr.io/masterhuthiu/miniinsurance:latest bash -c "
-              # ... (các lệnh test của bạn)
-            "
-
-      # Bước 3: Push (Tên viết thường)
-      - name: Push Docker Image
-        run: |
-          docker push ghcr.io/masterhuthiu/miniinsurance:latest
+          # Tự động lấy tên Repo và chuyển thành chữ thường (lowercase)
+          RAW_IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/miniinsurance"
+          LOWER_IMAGE_NAME=$(echo $RAW_IMAGE_NAME | tr '[A-Z]' '[a-z]')
+          
+          echo "Building image: $LOWER_IMAGE_NAME"
+          
+          docker build -t $LOWER_IMAGE_NAME:latest .
+          docker push $LOWER_IMAGE_NAME:latest
