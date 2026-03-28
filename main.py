@@ -11,29 +11,33 @@ def root():
 @app.get("/policies")
 def read_policies():
     process = subprocess.run(['./FETCHTBL'], capture_output=True, text=True)
-    
-    # 1. Tách chuỗi thành các dòng
     lines = process.stdout.split('\n')
     
-    # 2. Lọc lấy các dòng chứa dữ liệu (Bỏ dòng có dấu * hoặc - hoặc rỗng)
-    # Dòng dữ liệu bắt đầu bằng số (NO)
-    data_lines = [line for line in lines if line.strip() and not line.startswith('*') and not line.startswith('-') and 'NO' not in line]
-    
     results = []
-    for line in data_lines:
-        # Cắt chuỗi dựa trên khoảng trắng (splitting by multiple spaces)
+    for line in lines:
+        line = line.strip()
+        # LOẠI BỎ: Dòng trống, dòng tiêu đề, dòng gạch ngang, và dòng TOTAL RECORD
+        if not line or line.startswith('*') or line.startswith('-') or 'NAME' in line or 'TOTAL' in line:
+            continue
+            
         parts = line.split()
         if len(parts) >= 3:
-            # Ghép tên lại nếu tên có khoảng trắng (ví dụ: Master Huthiu)
+            # Lấy số thứ tự (no)
+            no = parts[0]
+            # Lấy lương (salary) là phần tử cuối cùng
+            salary = parts[-1]
+            # Ghép tất cả các phần tử ở giữa lại thành tên (name)
+            name = " ".join(parts[1:-1])
+            
             results.append({
-                "no": parts[0],
-                "name": " ".join(parts[1:-1]),
-                "salary": parts[-1]
+                "no": no,
+                "name": name,
+                "salary": salary
             })
 
     return {
         "status": "success",
-        "total": len(results),
+        "total_records": len(results),
         "data": results
     }
 
