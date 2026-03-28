@@ -27,7 +27,7 @@
            05  D-POL-STATUS        PIC  X(10).
 
        EXEC SQL BEGIN DECLARE SECTION END-EXEC.
-       01  DBNAME                  PIC  X(30) VALUE "testdb".
+       01  DBNAME                  PIC  X(30) VALUE "insurandb".
        01  USERNAME                PIC  X(30) VALUE "postgres".
        01  PASSWD                  PIC  X(10) VALUE SPACE.
 
@@ -51,7 +51,7 @@
       *      EXEC SQL WHENEVER SQLERROR PERFORM ERROR-RTN END-EXEC.
 
       *    CONNECT
-           MOVE  "testdb"          TO   DBNAME.
+           MOVE  "insurandb"          TO   DBNAME.
            MOVE  "postgres"        TO   USERNAME.
            MOVE  SPACE             TO   PASSWD.
            EXEC SQL
