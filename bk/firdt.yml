@@ -1,0 +1,99 @@
+name: Build, Test and Push Image
+
+on: [push, pull_request]
+
+# Cần quyền này để push lên GitHub Container Registry (GHCR)
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres-db:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust 
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnucobol libpq-dev git make gcc autoconf libtool
+
+      - name: Build and Install Open-COBOL-ESQL
+        run: |
+          git clone https://github.com/opensourcecobol/Open-COBOL-ESQL.git
+          cd Open-COBOL-ESQL
+          ./autogen.sh
+          ./configure
+          make
+          sudo make install
+          sudo ldconfig
+
+      - name: Initialize Database
+        run: |
+          # Giả sử file init.sql nằm trong thư mục db/
+          psql -h localhost -U postgres -d testdb -f db/init.sql || echo "No init script found"
+
+      - name: Pre-compile and Build Apps
+        run: |
+          # Pre-compile
+          ocesql FETCHTBL.cbl FETCHTBL.cob
+          # Build binary (ép link trực tiếp file .so)
+          cobc -x -fixed -I. FETCHTBL.cob /usr/local/lib/libocesql.so -lpq -o FETCHTBL
+          
+          # Tương tự cho FETCH-POLICY
+          if [ -f src/FETCH-POLICY.cbl ]; then
+            ocesql src/FETCH-POLICY.cbl src/FETCH-POLICY.cob
+            cobc -x -fixed -I. src/FETCH-POLICY.cob /usr/local/lib/libocesql.so -lpq -o FETCH-POLICY
+          fi
+
+      - name: Run and Verify
+        env:
+          LD_LIBRARY_PATH: .:/usr/local/lib
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: postgres
+          PGDATABASE: testdb
+        run: |
+          echo "--- KET QUA BANG EMP (FETCHTBL) ---"
+          ./FETCHTBL
+          
+          if [ -f ./FETCH-POLICY ]; then
+            echo "--- KET QUA BANG POLICIES (FETCH-POLICY) ---"
+            ./FETCH-POLICY
+          fi
+
+      # --- BƯỚC PUSH IMAGE ---
+      
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          # Tên image sẽ là: ghcr.io/username/repository-name:latest
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}

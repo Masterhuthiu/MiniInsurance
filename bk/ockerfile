@@ -1,0 +1,16 @@
+# Cài đặt các công cụ build
+RUN apt-get update && apt-get install -y \
+    git make gcc autoconf libtool bison flex libpq-dev gnucobol
+
+# Build và Install Open-COBOL-ESQL bên trong Image
+RUN git clone --depth 1 https://github.com/opensourcecobol/Open-COBOL-ESQL.git /tmp/ocesql \
+    && cd /tmp/ocesql \
+    && ./autogen.sh \
+    && ./configure \
+    && make \
+    && make install \
+    && ldconfig
+
+# Tạo các link thư viện để không bị lỗi 'module not found'
+RUN ln -s /usr/local/lib/libocesql.so /usr/local/lib/OCESQLConnect.so \
+    && ln -s /usr/local/lib/libocesql.so /usr/local/lib/OCESQL.so
