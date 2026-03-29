@@ -48,12 +48,7 @@ USER root
 WORKDIR /app
 COPY . .
 
-# Giả sử bạn có file script để khởi động cả 2 dịch vụ
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
 
-EXPOSE 5432
-ENTRYPOINT ["/entrypoint.sh"]
 
 # 6. Cấu hình môi trường (Biến môi trường cho cả COBOL và Python)
 ENV PGHOST=db \
