@@ -9,9 +9,7 @@ RUN apt-get update && apt-get install -y \
 USER postgres
 RUN /etc/init.d/postgresql start && \
     psql --command "CREATE USER admin WITH SUPERUSER PASSWORD 'admin';" && \
-    psql --command "CREATE DATABASE insurandb;" && \
-    psql -d insurandb -c "CREATE TABLE POLICIESM (POL_ID INT PRIMARY KEY, OWNER_NAME VARCHAR(100), POL_STATUS VARCHAR(50), GROSS_PREM DECIMAL(18,2));"
-
+    psql --command "CREATE DATABASE insurandb;" 
 # 3. Quay lại quyền root để cài đặt App
 USER root
 # 2. Cài đặt Open-COBOL-ESQL (ocesql)
