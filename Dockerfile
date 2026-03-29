@@ -2,7 +2,7 @@ FROM debian:bookworm-slim
 
 # 1. Cài đặt GnuCOBOL, Postgres Client và PYTHON
 RUN apt-get update && apt-get install -y \
-    gnucobol libpq-dev postgresql postgresql-contrib git make gcc autoconf libtool bison flex pkg-config \
+    gnucobol libpq-dev postgresql-client postgresql postgresql-contrib git make gcc autoconf libtool bison flex pkg-config \
     python3 python3-pip python3-venv \
     && rm -rf /var/lib/apt/lists/*
 # 2. Cấu hình Postgres để cho phép kết nối local không cần password (để dev nhanh)
