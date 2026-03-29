@@ -5,7 +5,13 @@ RUN apt-get update && apt-get install -y \
     gnucobol libpq-dev postgresql-client git make gcc autoconf libtool bison flex pkg-config \
     python3 python3-pip python3-venv \
     && rm -rf /var/lib/apt/lists/*
-
+# 2. Cấu hình Postgres để cho phép kết nối local không cần password (để dev nhanh)
+USER postgres
+RUN /etc/init.d/postgresql start && \
+    psql --command "CREATE USER admin WITH SUPERUSER PASSWORD 'admin';" && \
+    psql --command "CREATE DATABASE insurandb;" && \
+    psql -d insurandb -c "CREATE TABLE POLICIESM (POL_ID INT PRIMARY KEY, OWNER_NAME VARCHAR(100), POL_STATUS VARCHAR(50), GROSS_PREM DECIMAL(18,2));"
+    
 # 2. Cài đặt Open-COBOL-ESQL (ocesql)
 RUN git clone --depth 1 https://github.com/opensourcecobol/Open-COBOL-ESQL.git /tmp/ocesql \
     && cd /tmp/ocesql && ./autogen.sh && ./configure && make && make install && ldconfig
@@ -25,30 +31,6 @@ RUN ocesql FETCHTBL.cbl FETCHTBL.cob && \
 
 # 5. Cài đặt thư viện Python (FastAPI & Uvicorn)
 RUN pip3 install --no-cache-dir fastapi uvicorn --break-system-packages
-
-FROM debian:12-slim
-
-# 1. Cài đặt các công cụ cần thiết: COBOL, PostgreSQL và Net-tools
-RUN apt-get update && apt-get install -y \
-    gnucobol \
-    postgresql \
-    postgresql-contrib \
-    net-tools \
-    && rm -rf /var/lib/apt/lists/*
-
-# 2. Cấu hình Postgres để cho phép kết nối local không cần password (để dev nhanh)
-USER postgres
-RUN /etc/init.d/postgresql start && \
-    psql --command "CREATE USER admin WITH SUPERUSER PASSWORD 'admin';" && \
-    psql --command "CREATE DATABASE insurandb;" && \
-    psql -d insurandb -c "CREATE TABLE POLICIESM (POL_ID INT PRIMARY KEY, OWNER_NAME VARCHAR(100), POL_STATUS VARCHAR(50), GROSS_PREM DECIMAL(18,2));"
-
-# 3. Quay lại quyền root để cài đặt App
-USER root
-WORKDIR /app
-COPY . .
-
-
 
 # 6. Cấu hình môi trường (Biến môi trường cho cả COBOL và Python)
 ENV PGHOST=db \
