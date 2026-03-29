@@ -6,12 +6,7 @@ RUN apt-get update && apt-get install -y \
     python3 python3-pip python3-venv \
     && rm -rf /var/lib/apt/lists/*
 # 2. Cấu hình Postgres để cho phép kết nối local không cần password (để dev nhanh)
-USER postgres
-RUN /etc/init.d/postgresql start && \
-    psql --command "CREATE USER admin WITH SUPERUSER PASSWORD 'admin';" && \
-    psql --command "CREATE DATABASE insurandb;" && \
-    psql -d insurandb -c "CREATE TABLE POLICIESM (POL_ID INT PRIMARY KEY, OWNER_NAME VARCHAR(100), POL_STATUS VARCHAR(50), GROSS_PREM DECIMAL(18,2));"
-    
+
 # 2. Cài đặt Open-COBOL-ESQL (ocesql)
 RUN git clone --depth 1 https://github.com/opensourcecobol/Open-COBOL-ESQL.git /tmp/ocesql \
     && cd /tmp/ocesql && ./autogen.sh && ./configure && make && make install && ldconfig
